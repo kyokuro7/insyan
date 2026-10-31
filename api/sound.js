@@ -15,8 +15,19 @@ export default async function handler(req, res) {
   const $ = cheerio.load(html);
   const title = $("h2").first().text().trim();
 
-  const match = html.match(/play\('([^']+)'\)/);
-  if (!match) return res.status(404).json({ error: "mp3 not found" });
+  // 1️⃣ cari <audio> atau <source>
+  let mp3Path = $("audio source").attr("src") ||
+                $("audio").attr("src") ||
+                $("[data-url]").attr("data-url");
 
-  res.json({ title, slug, mp3: `${BASE}${match[1]}` });
+  // 2️⃣ fallback ke play('...')
+  if (!mp3Path) {
+    const match = html.match(/play\('([^']+)'\)/);
+    mp3Path = match ? match[1] : null;
+  }
+
+  if (!mp3Path) return res.status(404).json({ error: "mp3 not found" });
+
+  const mp3 = `${BASE}${mp3Path.startsWith("/") ? "" : "/"}${mp3Path}`;
+  res.json({ title, slug, mp3 });
 }
